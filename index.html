@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Life Shift · Energy Portraits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0d1015;--edge:#070a0c;--fog:#e8ede9;--dim:#8b9a9e;--line:#1c242b;--electric:#7ff3ff}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:radial-gradient(130% 80% at 50% -10%,#151d24,var(--ink) 48%,var(--edge));min-height:100vh;
+    color:var(--fog);font-family:'Space Mono',monospace;padding:clamp(40px,7vw,88px) clamp(20px,5vw,64px) 72px}
+  header{max-width:1120px;margin:0 auto 46px}
+  .eyebrow{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--dim)}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(34px,6vw,60px);line-height:1;margin-top:14px;
+    background:linear-gradient(96deg,#ffd6a8,#ff7a5c 34%,#9a6bff 66%,#7ff3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{margin-top:16px;max-width:52ch;font-size:13.5px;line-height:1.8;color:#aeb9bd}
+  .grid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+  .card{display:block;text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    background:rgba(255,255,255,.015);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+  .card:hover{transform:translateY(-3px);border-color:#2f3d44;box-shadow:0 24px 60px -34px rgba(0,0,0,.9)}
+  .card canvas{width:100%;height:120px;display:block}
+  .meta{padding:16px 18px 18px}
+  .name{font-family:'Fredoka',sans-serif;font-weight:600;font-size:19px;color:var(--fog)}
+  .d{margin-top:6px;font-size:12px;line-height:1.6;color:var(--dim)}
+  .view{margin-top:12px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--electric)}
+  footer{max-width:1120px;margin:52px auto 0;padding-top:22px;border-top:1px solid var(--line);
+    font-size:12px;letter-spacing:.04em;color:var(--dim)}
+  footer a{color:var(--electric);text-decoration:none;border-bottom:1px solid #2b4a52;padding-bottom:1px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">The Life Shift</div>
+    <h1>Energy Portraits</h1>
+    <p class="lede">Every guest's shift, rendered in color — the felt weather of a life turning into before and after, mapped through the SHIFTS framework.</p>
+  </header>
+  <main class="grid" id="grid"></main>
+  <footer>Part of <a href="https://lineinthesandproject.com" target="_blank" rel="noopener">the Line in the Sand Project</a>.</footer>
+
+<script>
+/* ============================================================
+   ADD AN EPISODE: paste a new entry below. Copy the `energy`
+   grid straight from that episode's portrait file, set `file`
+   to its .html filename, and give the guest's name + one line.
+   ============================================================ */
+const ENTRIES = [
+  {
+    name: "Drew Norton",
+    file: "energy-portrait-drew.html",
+    desc: "Fine on paper and quietly absent, until fifteen minutes woke him all the way up.",
+    energy: {
+      Stop:      {black:78, blue:42, red:66, purple:12, yellow:4,  electric:38},
+      Hide:      {black:55, blue:62, red:12, purple:30, yellow:22, electric:10},
+      Identify:  {black:30, blue:32, red:52, purple:50, yellow:38, electric:35},
+      Face:      {black:22, blue:24, red:60, purple:62, yellow:40, electric:42},
+      Transform: {black:12, blue:14, red:50, purple:50, yellow:66, electric:58},
+      Share:     {black:8,  blue:10, red:46, purple:38, yellow:62, electric:86},
+    }
+  },
+  // {
+  //   name: "Ranae Van Roekel",
+  //   file: "energy-portrait-ranae.html",
+  //   desc: "From a secret she was made to keep to the morning she chose to live.",
+  //   energy: { Stop:{...}, Hide:{...}, Identify:{...}, Face:{...}, Transform:{...}, Share:{...} }
+  // },
+];
+
+const STAGES=['Stop','Hide','Identify','Face','Transform','Share'];
+const KEYS=['black','blue','red','purple','yellow','electric'];
+const COL={black:'#141a22',blue:'#3f8fe0',red:'#ff5a3c',purple:'#9a6bff',yellow:'#ffc94a',electric:'#7ff3ff'};
+const hex=h=>({r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)});
+const RGB=Object.fromEntries(KEYS.map(k=>[k,hex(COL[k])]));
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+function stageColor(vals){
+  let r=0,g=0,b=0,tot=0;
+  for(const k of KEYS){const w=vals[k]||0,c=RGB[k];r+=c.r*w;g+=c.g*w;b+=c.b*w;tot+=w;}
+  let col=tot<1?{r:20,g:26,b:32}:{r:r/tot,g:g/tot,b:b/tot};
+  const lum=(col.r+col.g+col.b)/3, s=1.4;
+  return {r:clamp(lum+(col.r-lum)*s,0,255),g:clamp(lum+(col.g-lum)*s,0,255),b:clamp(lum+(col.b-lum)*s,0,255)};
+}
+function paintSig(cv, energy){
+  const DPR=Math.min(window.devicePixelRatio||1,2);
+  const w=cv.clientWidth, h=cv.clientHeight; cv.width=w*DPR; cv.height=h*DPR;
+  const g=cv.getContext('2d'); g.setTransform(DPR,0,0,DPR,0,0);
+  g.fillStyle='#070a0c'; g.fillRect(0,0,w,h);
+  const grad=g.createLinearGradient(0,0,w,0);
+  STAGES.forEach((s,i)=>{const c=stageColor(energy[s]); grad.addColorStop(i/5,`rgb(${c.r|0},${c.g|0},${c.b|0})`);});
+  g.fillStyle=grad; g.fillRect(0,0,w,h);
+  const vg=g.createLinearGradient(0,0,0,h);
+  vg.addColorStop(0,'rgba(255,255,255,.10)');vg.addColorStop(.4,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(0,0,0,.32)');
+  g.fillStyle=vg; g.fillRect(0,0,w,h);
+}
+
+const grid=document.getElementById('grid');
+ENTRIES.forEach(e=>{
+  const a=document.createElement('a'); a.className='card'; a.href=e.file;
+  a.innerHTML=`<canvas></canvas><div class="meta"><div class="name">${e.name}</div>`+
+              (e.desc?`<div class="d">${e.desc}</div>`:'')+`<div class="view">View portrait &rarr;</div></div>`;
+  grid.appendChild(a);
+  requestAnimationFrame(()=>paintSig(a.querySelector('canvas'), e.energy));
+});
+window.addEventListener('resize',()=>document.querySelectorAll('.card').forEach((a,i)=>paintSig(a.querySelector('canvas'),ENTRIES[i].energy)));
+</script>
+</body>
+</html>
