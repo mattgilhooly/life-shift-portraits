@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Portrait</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#070a0c;overflow:hidden}
+  #stage{position:relative;width:100%;height:100%;min-height:100vh}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .scrim{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(7,10,12,.28) 0%,transparent 24% 60%,rgba(7,10,12,.74) 100%)}
+  .cap{position:absolute;left:clamp(20px,4vw,48px);bottom:clamp(20px,4vw,40px);z-index:3;
+    font-family:'Space Mono',monospace;color:#e8ede9;max-width:min(560px,80%)}
+  .cap .eyebrow{font-size:10.5px;letter-spacing:.32em;text-transform:uppercase;color:#9fb0b3}
+  .cap .title{font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(24px,4.4vw,40px);line-height:1.02;margin-top:10px;color:#fff;text-shadow:0 2px 26px rgba(0,0,0,.6)}
+  .cap .desc{font-size:12.5px;line-height:1.6;color:#dbe4e2;margin-top:8px;max-width:44ch;text-shadow:0 1px 12px rgba(0,0,0,.6)}
+  .cap a{display:inline-flex;align-items:center;gap:7px;margin-top:18px;pointer-events:auto;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;color:#0a2026;background:#8ff4ff;
+    text-decoration:none;padding:9px 18px;border-radius:999px;transition:transform .15s,box-shadow .15s;box-shadow:0 0 24px -6px rgba(143,244,255,.6)}
+  .cap a:hover{transform:translateY(-1px);box-shadow:0 0 30px -4px rgba(143,244,255,.85)}
+  .flow{position:absolute;right:clamp(20px,4vw,44px);bottom:clamp(22px,4vw,42px);z-index:3;
+    font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.26em;text-transform:uppercase;color:#7c8b90;display:flex;gap:14px;pointer-events:none}
+  #png{position:absolute;top:clamp(16px,3vw,26px);right:clamp(16px,3vw,26px);z-index:4;pointer-events:auto;
+    font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:#cfe0e3;background:rgba(10,16,19,.5);border:1px solid rgba(180,220,225,.25);border-radius:999px;
+    padding:8px 15px;cursor:pointer;backdrop-filter:blur(4px);transition:background .15s}
+  #png:hover{background:rgba(20,30,34,.75)}
+  @media (max-width:560px){ .flow{display:none} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div class="scrim"></div>
+  <div class="flow" id="flow"></div>
+  <button id="png">&#8681; PNG</button>
+  <div class="cap">
+    <div class="eyebrow">The Life Shift &middot; energy portrait</div>
+    <div class="title" id="capTitle"></div>
+    <div class="desc" id="capDesc"></div>
+    <a id="capLink" href="#" target="_blank" rel="noopener"><span id="capLabel"></span> &rarr;</a>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ONE EPISODE = ONE DATA BLOCK.  To make another portrait, copy
+   this file and edit only EPISODE below: title, one-line desc,
+   link, and the six energies per stage (0-100). The rest is
+   generative. The colors are the six energies themselves, so a
+   shift heavy in stillness stays dark, one full of connection
+   glows — the frame is always rooted in real colour, never washed white.
+   ============================================================ */
+const EPISODE = {
+  title: "Scott Stirrett",
+  desc:  "The ease with uncertainty he had at twenty-two vanished into a decade of perfectionism and a life grown small \u2014 until he rebuilt it, one risk at a time.",
+  link:  "https://lineinthesandproject.com",
+  linkLabel: "Explore the SHIFTS",
+  energy: {
+    Stop:      {black:62, blue:50, red:48, purple:30, yellow:26, electric:24},
+    Hide:      {black:55, blue:72, red:12, purple:50, yellow:14, electric:10},
+    Identify:  {black:26, blue:38, red:52, purple:55, yellow:34, electric:40},
+    Face:      {black:18, blue:26, red:62, purple:66, yellow:40, electric:46},
+    Transform: {black:12, blue:15, red:52, purple:52, yellow:64, electric:62},
+    Share:     {black:8,  blue:10, red:48, purple:42, yellow:62, electric:84},
+  }
+};
+
+(() => {
+  const STAGES=['Stop','Hide','Identify','Face','Transform','Share'];
+  const KEYS=['black','blue','red','purple','yellow','electric'];
+  const COL={black:'#141a22', blue:'#3f8fe0', red:'#ff5a3c', purple:'#9a6bff', yellow:'#ffc94a', electric:'#7ff3ff'};
+
+  document.getElementById('capTitle').textContent=EPISODE.title;
+  document.getElementById('capDesc').textContent=EPISODE.desc||'';
+  const link=document.getElementById('capLink'); link.href=EPISODE.link||'#';
+  document.getElementById('capLabel').textContent=EPISODE.linkLabel||'Explore the SHIFTS';
+  document.getElementById('flow').innerHTML=STAGES.map(s=>`<span>${s}</span>`).join('');
+
+  const hex=h=>({r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)});
+  const RGB=Object.fromEntries(KEYS.map(k=>[k,hex(COL[k])]));
+  const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+
+  function sampleAt(t){
+    const A=EPISODE.energy[STAGES[clamp(Math.round(t),0,5)]] || EPISODE.energy[STAGES[0]];
+    const e={}; let r=0,g=0,b=0,tot=0;
+    for(const k of KEYS){ const v=A[k]/100; e[k]=v; const c=RGB[k], w=v*100; r+=c.r*w; g+=c.g*w; b+=c.b*w; tot+=w; }
+    // saturate the blend a touch so colours read strong, not muddy-grey
+    let col = tot<1?{r:20,g:26,b:32}:{r:r/tot,g:g/tot,b:b/tot};
+    const mx=Math.max(col.r,col.g,col.b), lum=(col.r+col.g+col.b)/3;
+    col={r:clamp(lum+(col.r-lum)*1.35,0,255), g:clamp(lum+(col.g-lum)*1.35,0,255), b:clamp(lum+(col.b-lum)*1.35,0,255)};
+    return {e, col};
+  }
+
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  let seed=0; for(const ch of EPISODE.title) seed=(seed*31+ch.charCodeAt(0))|0;
+  const rnd=mulberry32(seed||1);
+
+  // per-stage colour + behaviour, derived from the analysis
+  const SC=[], SP=[];
+  for(let i=0;i<6;i++){ const {e,col}=sampleAt(i); SC[i]=col;
+    SP[i]={
+      alpha: clamp(0.10 + e.yellow*0.17 + e.electric*0.17 + e.red*0.10 - e.black*0.05, 0.05, 0.30),
+      sizeK: 0.82 + e.yellow*0.5 + e.electric*0.28,
+      driftY:(e.blue*0.9 - e.red*0.9),   // holding sinks, fire rises
+      jitter: e.electric,                 // connection = spark & fly
+      speed:(1 - e.black*0.6),            // stillness slows everything
+      elec:  e.electric
+    };
+  }
+
+  const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W=0,H=0,DPR=Math.min(window.devicePixelRatio||1,2);
+  const PER=7; let blobs=[];
+  function initBlobs(){ blobs=[];
+    for(let i=0;i<6;i++) for(let j=0;j<PER;j++)
+      blobs.push({i, homeX:clamp(i/5+(rnd()-0.5)*0.24,0.03,0.97), cx:0, cy:rnd(), r:0.30+rnd()*0.44, ph:rnd()*6.28,
+        vy:(rnd()-0.5)*0.14, sw:0.00022+rnd()*0.0003, amp:0.05+rnd()*0.05, rMul:1, aMul:1});
+  }
+  function size(){ const r=cv.getBoundingClientRect(); W=r.width; H=r.height; cv.width=W*DPR; cv.height=H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0); if(!blobs.length)initBlobs(); }
+  new ResizeObserver(size).observe(cv); size();
+
+  function update(dt,tms){
+    for(const b of blobs){ const s=SP[b.i];
+      b.cy += (b.vy + s.driftY*0.06)*dt*s.speed + (rnd()-0.5)*s.jitter*0.10*dt;   // continuous drift + energy bias
+      b.cy = (((b.cy+0.2)%1.4)+1.4)%1.4 - 0.2;                                     // wrap top/bottom
+      b.cx = b.homeX + Math.sin(tms*b.sw + b.ph)*b.amp*s.speed;                    // horizontal sway
+      b.rMul = 1 + 0.18*Math.sin(tms*0.0008 + b.ph);                              // breathe (size)
+      b.aMul = 0.78 + 0.22*Math.sin(tms*0.00055 + b.ph*1.7);                      // breathe (glow)
+    }
+  }
+
+  // paints bg + colour base + clouds + vignette at any size (screen or export)
+  function paint(g,Wp,Hp){
+    g.fillStyle='#070a0c'; g.fillRect(0,0,Wp,Hp);
+    const bw=g.createLinearGradient(0,0,Wp,0);
+    for(let i=0;i<6;i++){const c=SC[i]; bw.addColorStop(i/5,`rgb(${c.r|0},${c.g|0},${c.b|0})`);}
+    g.globalAlpha=0.36; g.fillStyle=bw; g.fillRect(0,0,Wp,Hp); g.globalAlpha=1;   // colour base
+    for(const b of blobs){ const s=SP[b.i], c=SC[b.i];
+      const x=b.cx*Wp, y=b.cy*Hp, r=b.r*Hp*s.sizeK*(b.rMul||1), a=s.alpha*(b.aMul||1);
+      const rg=g.createRadialGradient(x,y,0,x,y,r);
+      rg.addColorStop(0,`rgba(${c.r|0},${c.g|0},${c.b|0},${a})`);
+      rg.addColorStop(1,`rgba(${c.r|0},${c.g|0},${c.b|0},0)`);
+      g.fillStyle=rg; g.beginPath(); g.arc(x,y,r,0,6.283); g.fill();
+    }
+    const vg=g.createRadialGradient(Wp/2,Hp*0.5,Hp*0.32,Wp/2,Hp*0.5,Hp*0.98);
+    vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(4,6,9,.62)');
+    g.fillStyle=vg; g.fillRect(0,0,Wp,Hp);
+  }
+  function sparks(g,Wp,Hp){
+    g.globalCompositeOperation='lighter';
+    for(const b of blobs){ const s=SP[b.i]; if(s.elec>0.55 && rnd()<s.elec*0.03){
+      const x=b.cx*Wp,y=b.cy*Hp; g.strokeStyle=`rgba(200,250,255,${0.12+s.elec*0.2})`; g.lineWidth=1;
+      g.beginPath(); g.moveTo(x,y); g.lineTo(x+(rnd()-0.5)*40,y+(rnd()-0.5)*40); g.stroke();
+    }}
+    g.globalCompositeOperation='source-over';
+  }
+
+  let last=performance.now();
+  function loop(now){ let dt=(now-last)/1000; last=now; dt=Math.min(dt,0.05); update(dt,now); paint(ctx,W,H); sparks(ctx,W,H); requestAnimationFrame(loop); }
+  if(reduce){ let tms=0; for(let i=0;i<200;i++){ update(0.03,tms); tms+=30; } paint(ctx,W,H); }
+  else requestAnimationFrame(loop);
+
+  // ---- PNG export (a still, high-res portrait with caption) ----
+  document.getElementById('png').addEventListener('click',()=>{
+    const W2=1600,H2=900, cn=document.createElement('canvas'); cn.width=W2; cn.height=H2; const g=cn.getContext('2d');
+    paint(g,W2,H2);
+    const sc=g.createLinearGradient(0,H2*0.55,0,H2); sc.addColorStop(0,'rgba(7,10,12,0)'); sc.addColorStop(1,'rgba(7,10,12,.82)');
+    g.fillStyle=sc; g.fillRect(0,0,W2,H2);
+    g.textAlign='left';
+    g.fillStyle='#a9b8bb'; g.font='700 22px "Space Mono", monospace'; g.fillText('THE LIFE SHIFT  \u00B7  ENERGY PORTRAIT', 74, H2-158);
+    g.fillStyle='#ffffff'; g.font='700 66px Fredoka, sans-serif'; g.fillText(EPISODE.title, 71, H2-88);
+    g.fillStyle='#8ff4ff'; g.font='600 25px Fredoka, sans-serif'; g.fillText((EPISODE.linkLabel||'Explore the SHIFTS')+'   \u2192', 74, H2-44);
+    const a=document.createElement('a'); a.download=(EPISODE.title||'portrait').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-energy-portrait.png';
+    a.href=cn.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove();
+  });
+})();
+</script>
+</body>
+</html>
