@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Portrait — Robert R. Beltran</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --c-black:#1a1a2e;
+  --c-blue:#1e4db7;
+  --c-red:#c0392b;
+  --c-purple:#7b2d8b;
+  --c-yellow:#e6a817;
+  --c-electric:#00b4d8;
+  --bg:#08080f;
+  --text:#e8e4dc;
+  --muted:#5a5a7a;
+  --surface:#111118;
+}
+
+html,body{width:100%;height:100%;overflow:hidden}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Georgia',serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+canvas{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+}
+
+.ui{
+  position:relative;
+  z-index:10;
+  width:min(680px,95vw);
+  padding:2rem 1.5rem;
+  display:flex;
+  flex-direction:column;
+  gap:1.8rem;
+  align-items:center;
+}
+
+/* Header */
+.header{text-align:center}
+.ep-eyebrow{
+  font-family:'Courier New',monospace;
+  font-size:clamp(0.55rem,1.2vw,0.65rem);
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:0.45rem;
+}
+.ep-title{
+  font-size:clamp(1.5rem,3.5vw,2.2rem);
+  font-weight:400;
+  letter-spacing:0.03em;
+  margin-bottom:0.5rem;
+}
+.ep-desc{
+  font-size:clamp(0.72rem,1.5vw,0.84rem);
+  color:var(--muted);
+  font-style:italic;
+  line-height:1.65;
+  max-width:500px;
+  margin:0 auto;
+}
+
+/* Stage bars */
+.stages{width:100%;display:flex;flex-direction:column;gap:0.45rem}
+
+.stage-row{
+  display:grid;
+  grid-template-columns:5.5rem 1fr;
+  align-items:center;
+  gap:0.9rem;
+}
+
+.stage-label{
+  font-family:'Courier New',monospace;
+  font-size:clamp(0.55rem,1.2vw,0.65rem);
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+  text-align:right;
+}
+
+.stage-bar{
+  height:26px;
+  border-radius:3px;
+  background:var(--surface);
+  display:flex;
+  overflow:hidden;
+}
+
+.seg{
+  height:100%;
+  transform:scaleX(0);
+  transform-origin:left;
+  transition:transform 1.3s cubic-bezier(0.16,1,0.3,1);
+}
+.seg.black   {background:var(--c-black)}
+.seg.blue    {background:var(--c-blue)}
+.seg.red     {background:var(--c-red)}
+.seg.purple  {background:var(--c-purple)}
+.seg.yellow  {background:var(--c-yellow)}
+.seg.electric{background:var(--c-electric)}
+
+/* Legend */
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:0.6rem 1.2rem;
+}
+.legend-item{display:flex;align-items:center;gap:0.35rem}
+.legend-dot{
+  width:7px;height:7px;border-radius:50%;flex-shrink:0;
+}
+.legend-dot.black   {background:var(--c-black);border:1px solid #444}
+.legend-dot.blue    {background:var(--c-blue)}
+.legend-dot.red     {background:var(--c-red)}
+.legend-dot.purple  {background:var(--c-purple)}
+.legend-dot.yellow  {background:var(--c-yellow)}
+.legend-dot.electric{background:var(--c-electric)}
+.legend-name{
+  font-family:'Courier New',monospace;
+  font-size:clamp(0.52rem,1.1vw,0.6rem);
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+/* Link */
+.footer-link{
+  font-family:'Courier New',monospace;
+  font-size:clamp(0.52rem,1.1vw,0.6rem);
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--muted);
+  text-decoration:none;
+  border-bottom:1px solid var(--muted);
+  padding-bottom:1px;
+  opacity:0.55;
+  transition:opacity 0.2s;
+}
+.footer-link:hover{opacity:1}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div class="ui">
+  <div class="header">
+    <div class="ep-eyebrow">The Life Shift Podcast &nbsp;·&nbsp; S5 E274</div>
+    <div class="ep-title" id="ep-title"></div>
+    <div class="ep-desc" id="ep-desc"></div>
+  </div>
+  <div class="stages" id="stages"></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot black"></div><span class="legend-name">Still</span></div>
+    <div class="legend-item"><div class="legend-dot blue"></div><span class="legend-name">Holding On</span></div>
+    <div class="legend-item"><div class="legend-dot red"></div><span class="legend-name">Fire</span></div>
+    <div class="legend-item"><div class="legend-dot purple"></div><span class="legend-name">Push</span></div>
+    <div class="legend-item"><div class="legend-dot yellow"></div><span class="legend-name">Full</span></div>
+    <div class="legend-item"><div class="legend-dot electric"></div><span class="legend-name">Electric</span></div>
+  </div>
+  <a class="footer-link" id="ep-link" href="#" target="_blank"></a>
+</div>
+
+<script>
+// ── EPISODE DATA ─────────────────────────────────────────────────────────────
+const EPISODE = {
+  title: "Robert R. Beltran",
+  desc:  "A surgeon who outran fear for thirty-two years — until an accident, an addiction, and his wife's ultimatum forced him to stop. Rock bottom became the soil for the most fulfilling chapter of his life.",
+  link:  "https://lineinthesandproject.com",
+  linkLabel: "Explore the SHIFTS",
+  energy: {
+    Stop:      {black:72, blue:55, red:18, purple:10, yellow:8,  electric:5},
+    Hide:      {black:60, blue:80, red:30, purple:20, yellow:6,  electric:4},
+    Identify:  {black:40, blue:35, red:65, purple:42, yellow:15, electric:10},
+    Face:      {black:18, blue:20, red:72, purple:85, yellow:30, electric:22},
+    Transform: {black:5,  blue:8,  red:55, purple:60, yellow:92, electric:78},
+    Share:     {black:8,  blue:5,  red:50, purple:55, yellow:70, electric:88},
+  }
+};
+
+// ── Populate text ─────────────────────────────────────────────────────────────
+document.getElementById('ep-title').textContent = EPISODE.title;
+document.getElementById('ep-desc').textContent  = EPISODE.desc;
+const linkEl = document.getElementById('ep-link');
+linkEl.href        = EPISODE.link;
+linkEl.textContent = EPISODE.linkLabel;
+
+// ── Build bars ────────────────────────────────────────────────────────────────
+const COLOR_ORDER = ['black','blue','red','purple','yellow','electric'];
+const stagesEl    = document.getElementById('stages');
+
+Object.entries(EPISODE.energy).forEach(([stage, vals]) => {
+  const total = COLOR_ORDER.reduce((s,k) => s + vals[k], 0);
+  const row   = document.createElement('div');
+  row.className = 'stage-row';
+
+  const lbl = document.createElement('div');
+  lbl.className   = 'stage-label';
+  lbl.textContent = stage;
+
+  const bar = document.createElement('div');
+  bar.className = 'stage-bar';
+
+  COLOR_ORDER.forEach(color => {
+    const pct = (vals[color] / total) * 100;
+    const seg = document.createElement('div');
+    seg.className = `seg ${color}`;
+    seg.style.width = pct + '%';
+    bar.appendChild(seg);
+  });
+
+  row.appendChild(lbl);
+  row.appendChild(bar);
+  stagesEl.appendChild(row);
+});
+
+// ── Animate bars ──────────────────────────────────────────────────────────────
+requestAnimationFrame(() => {
+  setTimeout(() => {
+    document.querySelectorAll('.stage-row').forEach((row, i) => {
+      setTimeout(() => {
+        row.querySelectorAll('.seg').forEach((seg, j) => {
+          setTimeout(() => { seg.style.transform = 'scaleX(1)'; }, j * 55);
+        });
+      }, i * 110);
+    });
+  }, 150);
+});
+
+// ── Canvas: drifting colour orbs ──────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+// Raw RGB for each energy — weighted to Robert's story:
+// heavy blue (hiding), dominant yellow+electric (transform/share)
+const ORB_DEF = [
+  {rgb:[26, 26, 46],  w:2},  // still/black
+  {rgb:[30, 77, 183], w:5},  // blue — hide dominance
+  {rgb:[192,57, 43],  w:3},  // red
+  {rgb:[123,45, 139], w:3},  // purple
+  {rgb:[230,168,23],  w:6},  // yellow — transform peak
+  {rgb:[0,  180,216], w:7},  // electric — share peak
+];
+
+let W, H, orbs = [];
+
+function resize(){
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+
+function makeOrb(){
+  const total = ORB_DEF.reduce((s,d)=>s+d.w,0);
+  let r = Math.random()*total, ci=0;
+  for(let i=0;i<ORB_DEF.length;i++){r-=ORB_DEF[i].w;if(r<=0){ci=i;break;}}
+  return {
+    x:  Math.random()*W,
+    y:  Math.random()*H,
+    r:  70 + Math.random()*200,
+    vx: (Math.random()-0.5)*0.4,
+    vy: (Math.random()-0.5)*0.4,
+    rgb:ORB_DEF[ci].rgb,
+    a:  0.07 + Math.random()*0.16,
+    phase: Math.random()*Math.PI*2,
+    spd:   0.003 + Math.random()*0.005,
+  };
+}
+
+function init(){ orbs=[]; for(let i=0;i<24;i++) orbs.push(makeOrb()); }
+
+function draw(t){
+  ctx.clearRect(0,0,W,H);
+  orbs.forEach(o=>{
+    const pulse = 1 + 0.1*Math.sin(t*o.spd+o.phase);
+    const [r,g,b] = o.rgb;
+    const g2 = ctx.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r*pulse);
+    g2.addColorStop(0,`rgba(${r},${g},${b},${o.a})`);
+    g2.addColorStop(1,`rgba(${r},${g},${b},0)`);
+    ctx.beginPath();
+    ctx.arc(o.x,o.y,o.r*pulse,0,Math.PI*2);
+    ctx.fillStyle=g2;
+    ctx.fill();
+    o.x+=o.vx; o.y+=o.vy;
+    if(o.x<-o.r) o.x=W+o.r;
+    if(o.x>W+o.r)o.x=-o.r;
+    if(o.y<-o.r) o.y=H+o.r;
+    if(o.y>H+o.r)o.y=-o.r;
+  });
+  requestAnimationFrame(draw);
+}
+
+resize();
+init();
+window.addEventListener('resize',()=>{resize();init();});
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
